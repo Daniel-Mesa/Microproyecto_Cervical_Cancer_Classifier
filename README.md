@@ -3,16 +3,16 @@ Este proyecto tiene como objetivo el análisis y clasificación de subtipos de c
 
 Editor readme: https://readme.so/es/editor
 
-# clonar el repositorio
+# Clonar el repositorio
 ```bash
 git clone https://github.com/Daniel-Mesa/Microproyecto_Cervical_Cancer_Classifier.git
 ```
-# Pasos de configuracion deel entorno
-crear el entorno
+# Pasos de configuracion del entorno
+Crear el entorno
 ```bash
 python -m venv venv
 ```
-activar entorno desde powershell
+Activar entorno desde powershell
 ```bash
  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\venv\Scripts\Activate.ps1
