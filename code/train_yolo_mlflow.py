@@ -1,67 +1,66 @@
-# train_yolo_mlflow.py
-
+# code/train_yolo_mlflow.py
 import os
-from ultralytics import YOLO
 import mlflow
-import mlflow.ultralytics
+from ultralytics import YOLO
+import dvc.api
 
-# -----------------------------
-# 1️⃣ Configuración de paths
-# -----------------------------
-# Ruta donde DVC descargó tu dataset
-DATASET_PATH = "/home/ubuntu/Microproyecto_Cervical_Cancer_Classifier/dataset_preproc"
+# -------------------------
+# CONFIGURACIÓN MLflow
+# -------------------------
+EXPERIMENT_NAME = "yolo_experiment"
+mlflow.set_experiment(EXPERIMENT_NAME)
 
-# Verifica que el dataset exista
-if not os.path.exists(DATASET_PATH):
-    raise FileNotFoundError(f"No se encontró el dataset en {DATASET_PATH}. "
-                            "Ejecuta `dvc pull dataset_preproc.dvc` primero.")
+# -------------------------
+# OBTENER DATOS DESDE DVC/S3
+# -------------------------
+# Ruta lógica dentro del repo
+DATA_PATH = "dataset_preproc"
 
-# Modelo preentrenado o base
-MODEL_PATH = "yolo11l-cls.pt"
+# Si quieres obtener la URL S3 directa (opcional)
+# url = dvc.api.get_url(DATA_PATH)
 
-# -----------------------------
-# 2️⃣ Configuración de entrenamiento
-# -----------------------------
-EPOCHS = 200
-IMGSZ = 224
+# -------------------------
+# HIPERPARÁMETROS
+# -------------------------
+EPOCHS = 100
 BATCH_SIZE = 64
-DEVICE = 0          # GPU: 0, CPU: -1
-LEARNING_RATE = 0.005
-OPTIMIZER = "AdamW"
+IMGSZ = 224
+DEVICE = -1  # 0 = primera GPU, -1 = CPU
 
-# -----------------------------
-# 3️⃣ Iniciar experimento MLflow
-# -----------------------------
-mlflow.set_experiment("Cervical-Cancer-Classification")
-
+# -------------------------
+# INICIO DEL EXPERIMENTO MLflow
+# -------------------------
 with mlflow.start_run():
-
-    # Log de parámetros
+    # Registrar hiperparámetros
     mlflow.log_param("epochs", EPOCHS)
-    mlflow.log_param("img_size", IMGSZ)
     mlflow.log_param("batch_size", BATCH_SIZE)
+    mlflow.log_param("img_size", IMGSZ)
     mlflow.log_param("device", DEVICE)
-    mlflow.log_param("learning_rate", LEARNING_RATE)
-    mlflow.log_param("optimizer", OPTIMIZER)
-    
-    # -----------------------------
-    # 4️⃣ Entrenamiento YOLO
-    # -----------------------------
-    model = YOLO(MODEL_PATH)
-    
+
+    # -------------------------
+    # ENTRENAR MODELO YOLO
+    # -------------------------
+    model = YOLO("yolo11l-cls")  # Cambiar por tu modelo preentrenado si es necesario
     model.train(
-        data=DATASET_PATH,
+        data=DATA_PATH,
         epochs=EPOCHS,
-        imgsz=IMGSZ,
         batch=BATCH_SIZE,
-        device=DEVICE,
-        optimizer=OPTIMIZER,
-        lr0=LEARNING_RATE,
+        imgsz=IMGSZ,
+        device=DEVICE
     )
-    
-    # -----------------------------
-    # 5️⃣ Log del modelo entrenado
-    # -----------------------------
-    mlflow.ultralytics.log_model(model, "yolo_model")
-    
-    print("✅ Entrenamiento completado y logueado en MLflow")
+
+    # -------------------------
+    # GUARDAR MODELO ENTRENADO
+    # -------------------------
+    MODEL_PATH = "yolo_model.pt"
+    model.save(MODEL_PATH)
+    mlflow.log_artifact(MODEL_PATH)
+
+    # -------------------------
+    # EJEMPLO DE MÉTRICA
+    # -------------------------
+    # Aquí podrías calcular AUC u otra métrica
+    example_metric = 0.85
+    mlflow.log_metric("example_metric", example_metric)
+
+print("Entrenamiento finalizado. Modelo y métricas registrados en MLflow.")
