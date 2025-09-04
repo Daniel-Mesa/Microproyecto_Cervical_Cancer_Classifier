@@ -23,7 +23,7 @@ DATA_PATH = "dataset_preproc"
 # HIPERPARÁMETROS
 # -------------------------
 EPOCHS = 100
-BATCH_SIZE = 64
+BATCH_SIZE = 8
 IMGSZ = 224
 DEVICE = -1  # 0 = primera GPU, -1 = CPU
 
@@ -46,7 +46,8 @@ with mlflow.start_run():
         epochs=EPOCHS,
         batch=BATCH_SIZE,
         imgsz=IMGSZ,
-        device=DEVICE
+        device=DEVICE,
+        workers=0
     )
 
     # -------------------------
