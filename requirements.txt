@@ -7,3 +7,9 @@ dash-table==5.0.0
 pandas
 numpy
 openpyxl
+"dvc[s3]"
+SimpleITK
+pydicom
+matplotlib
+scikit-learn
+ultralytics

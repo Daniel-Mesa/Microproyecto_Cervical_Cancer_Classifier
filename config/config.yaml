@@ -1,0 +1,4 @@
+paths:
+  EXTERNAL_IMAGES_PATH: "C:\\Users\\david\\OneDrive\\Documentos\\Maestria en IA\\Proyecto de grado 1\\Microproyecto\\Programa_microproyecto\\Microproyecto_Cervical_Cancer_Classifier"
+  save_path: "C:\\Users\\david\\Downloads\\archivos_app_guardados"
+  model_path: "C:\\Users\\david\\OneDrive\\Documentos\\Maestria en IA\\Proyecto de grado 1\\Microproyecto\\Programa_microproyecto\\Microproyecto_Cervical_Cancer_Classifier\\data\\train_models\\best.pt"

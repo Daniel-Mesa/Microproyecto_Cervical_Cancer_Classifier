@@ -1,3 +1,4 @@
+#### Codigo desarrollado con asistencia de ChatGPT-4 de Open AI ####
 import io
 import os
 import warnings
@@ -6,6 +7,12 @@ import pandas as pd
 import flask
 import base64
 import time
+import yaml
+import shutil
+# librerias para crear imagenes
+import numpy as np
+from PIL import Image
+import pydicom
 # librerías de dash
 import dash_daq as daq
 from dash import Dash, dcc, html, dash_table, ctx, no_update
@@ -17,6 +24,8 @@ from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.drawing.image import Image as XLImage
 from datetime import datetime, date, timedelta
+# librerias de IA
+from ultralytics import YOLO
 warnings.filterwarnings("ignore")
 
 #====================== Inicialización de la app ======================#
@@ -30,7 +39,6 @@ VALID_PASSWORD_HASH = hashlib.sha256("admin@123".encode()).hexdigest()  # Contra
 session_store = dcc.Store(id="session", storage_type="session")
 
 # Ruta del directorio externo
-EXTERNAL_IMAGES_PATH = r'C:\Users\david\OneDrive\Documentos\Maestria en IA\Proyecto de grado 1\Microproyecto\Programa_microproyecto\Microproyecto_Cervical_Cancer_Classifier'
 @app.server.route("/external-images/<path:filename>")
 def serve_external_images(filename):
     return flask.send_from_directory(EXTERNAL_IMAGES_PATH, filename)
@@ -111,7 +119,7 @@ app_layout = html.Div(
                         id='upload-data',
                         children=html.Div([
                             '📂 Arrastra y suelta o ',
-                            html.A('Selecciona un archivo .zip')
+                            html.A('Selecciona un archivo .zip con imagenes DICOM de corte axial T2')
                         ]),
                         style={
                             'width': '100%',
@@ -130,7 +138,7 @@ app_layout = html.Div(
                     dbc.CardBody(
                         [
                             dbc.Button(
-                                "Procesar archivos guardados",
+                                "Analizar archivos DICOM",
                                 id="process-files-button",
                                 color="primary",
                                 className="w-100",
@@ -237,13 +245,12 @@ def handle_file_upload(contents, filename):
 # Función para procesar los archivos descomprimidos, verificando que sean formato .mp3, los que coninicdan guardarlos en un path C:\Users\david\Downloads\archivos_app_guardados
 def process_files(zip_ref):
     try:
-        save_path = r'C:\Users\david\Downloads\archivos_app_guardados'
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         for file_name in zip_ref.namelist():
-            if file_name.endswith('.mp3'):
+            if file_name.endswith('.dcm'):
                 zip_ref.extract(file_name, save_path)
-        print(f'Archivos .mp3 guardados en {save_path}')
+        print(f'Archivos .dcm guardados en {save_path}')
     except Exception as e:
         print(f'Error al procesar los archivos: {e}')
 # Callback para procesar los archivos guardados al presionar el boton y actualiar barra de carga de 0 a 100% a medida que se procesan los archivos y previsualizar el resultado en una tabla con output-data-upload
@@ -266,28 +273,27 @@ def process_saved_files(n_clicks, n_intervals):
 
     triggered_id = ctx.triggered_id
 
-    save_path = r"C:\Users\david\Downloads\archivos_app_guardados"
-
     # Paso 1: Botón presionado → inicializar progreso
     if triggered_id == "process-files-button":
         if not os.path.exists(save_path):
             return True, 0, "", "No hay archivos para procesar.", [], {"display": "none"}
 
-        files = [f for f in os.listdir(save_path) if f.endswith(".mp3")]
+        files = [f for f in os.listdir(save_path) if f.endswith(".dcm")]
         if not files:
-            return True, 0, "", "No hay archivos .mp3 para procesar.", [], {"display": "none"}
+            return True, 0, "", "No hay archivos .dcm para procesar.", [], {"display": "none"}
 
         progress_state = {"files": files, "current": 0, "total": len(files), "results": []}
-        return False, 0, "0%", "Procesando archivos...", [], {"display": "none"}
+        return False, 0, "0%", "Procesando archivos DICOM...", [], {"display": "none"}
 
     # Paso 2: Intervalo activo → simular procesamiento archivo por archivo
     if triggered_id == "progress-interval":
         if progress_state["current"] < progress_state["total"]:
             file_name = progress_state["files"][progress_state["current"]]
 
-            # Simular procesamiento
-            time.sleep(0.5)
-            progress_state["results"].append({"Archivo": file_name, "Status": "Procesado"})
+            # Procesar y clasificar
+            result = process_dicom_and_classify(save_path, save_path, file_name)
+
+            progress_state["results"].append(result)
 
             progress_state["current"] += 1
             percent = int(progress_state["current"] / progress_state["total"] * 100)
@@ -301,15 +307,76 @@ def process_saved_files(n_clicks, n_intervals):
                 {"display": "none"}
             )
         else:
+            # ✅ Terminó el procesamiento
+            # Vaciar carpeta save_path
+            for f in os.listdir(save_path):
+                file_path = os.path.join(save_path, f)
+                try:
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print(f"Error eliminando {file_path}: {e}")
             # Terminó el procesamiento
             table = dash_table.DataTable(
-                columns=[{"name": i, "id": i} for i in ["Archivo", "Status"]],
+                columns=[
+                    {"name": "Archivo DICOM", "id": "Archivo DICOM"},
+                    {"name": "Clasificación", "id": "Clasificación"},
+                    {"name": "% Confianza", "id": "% Confianza"},
+                ],
                 data=progress_state["results"],
                 style_table={"overflowX": "auto"},
                 style_cell={"textAlign": "center"},
             )
             return True, 100, "100%", "Procesamiento completado ✅", table, {"display": "block"}
+
     raise PreventUpdate
+
+# Función para convertir DICOM a PNG
+def process_dicom_and_classify(input_path, output_path, filename, size=(224, 224)):
+    """
+    Convierte un DICOM a PNG y lo clasifica con YOLO.
+    Retorna clasificación y % confianza.
+    """
+    file_path = os.path.join(input_path, filename)
+    ds = pydicom.dcmread(file_path)
+
+    # Extraer el pixel array
+    img = ds.pixel_array.astype(float)
+    img = (np.maximum(img, 0) / img.max()) * 255.0
+    img = np.uint8(img)
+
+    # Convertir a imagen PIL
+    im = Image.fromarray(img).convert("L")
+    im = im.resize(size)
+    im = im.convert("RGB")
+
+    os.makedirs(output_path, exist_ok=True)
+    out_file = os.path.splitext(filename)[0] + ".png"
+    out_path = os.path.join(output_path, out_file)
+    im.save(out_path)
+
+    # 🔥 Clasificación con YOLO
+    results = model(out_path)  # correr modelo sobre la imagen PNG
+    if results and len(results[0].probs) > 0:
+        # Obtener clase con mayor probabilidad
+        class_id = int(results[0].probs.top1)
+        class_name = results[0].names[class_id]
+        confidence = float(results[0].probs.top1conf) * 100
+        if "class_0" in class_name:
+            class_name = "Cervical Squamous Cell Carcinoma"
+        elif "class_1" in class_name:
+            class_name = "Mucinous Adenocarcinoma of Endocervical Type"
+    else:
+        class_name = "Desconocido"
+        confidence = 0.0
+
+    return {
+        "Archivo DICOM": filename,
+        "Clasificación": class_name,
+        "% Confianza": f"{confidence:.2f}%"
+    }
 
 @app.callback(
     Output("download-excel", "data"),
@@ -346,5 +413,21 @@ def download_excel(n_clicks):
         print(f"Error al generar el archivo Excel: {e}")
         raise PreventUpdate
 
+# funcion para cargar datos del archivo config.yaml
+def load_config(config_path='config/config.yaml'):
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
+
 if __name__ == '__main__':
+    # declarar como global las variables de path
+    global EXTERNAL_IMAGES_PATH, save_path, model
+    # Cargar configuracion
+    config = load_config()
+    EXTERNAL_IMAGES_PATH = config['paths']['EXTERNAL_IMAGES_PATH']
+    save_path = config['paths']['save_path']
+    model_path = config['paths']['model_path']
+    # Cargar modelo
+    model = YOLO(model_path)
+    # Ejecutar la app
     app.run_server(host='0.0.0.0', port=8050, debug=True)

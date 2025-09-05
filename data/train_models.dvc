@@ -1,0 +1,6 @@
+outs:
+- md5: 906fa167062c5ee0356fb8b2096fa741.dir
+  size: 3185403
+  nfiles: 1
+  hash: md5
+  path: train_models

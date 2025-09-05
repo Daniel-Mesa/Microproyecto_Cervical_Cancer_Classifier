@@ -1,1 +1,8 @@
 /guia_de_datos.txt
+/X_train_raw.pk
+/X_test_raw.pk
+/X_val_raw.pk
+/test
+/train
+/val
+/train_models
