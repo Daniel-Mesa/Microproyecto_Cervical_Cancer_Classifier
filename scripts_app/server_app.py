@@ -13,6 +13,7 @@ import shutil
 import numpy as np
 from PIL import Image
 import pydicom
+from uuid import uuid4
 # librerías de dash
 import dash_daq as daq
 from dash import Dash, dcc, html, dash_table, ctx, no_update
@@ -42,6 +43,11 @@ session_store = dcc.Store(id="session", storage_type="session")
 @app.server.route("/external-images/<path:filename>")
 def serve_external_images(filename):
     return flask.send_from_directory(EXTERNAL_IMAGES_PATH, filename)
+
+# ruta del directorio de los archivos guardados temporalmente
+@app.server.route("/external-images2/<path:filename>")
+def serve_external_images2(filename):
+    return flask.send_from_directory(save_path, filename)
 #====================== Layout de la app ======================#
 # layout de login"
 login_layout = html.Div(
@@ -307,23 +313,13 @@ def process_saved_files(n_clicks, n_intervals):
                 {"display": "none"}
             )
         else:
-            # ✅ Terminó el procesamiento
-            # Vaciar carpeta save_path
-            for f in os.listdir(save_path):
-                file_path = os.path.join(save_path, f)
-                try:
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-                except Exception as e:
-                    print(f"Error eliminando {file_path}: {e}")
             # Terminó el procesamiento
             table = dash_table.DataTable(
                 columns=[
                     {"name": "Archivo DICOM", "id": "Archivo DICOM"},
                     {"name": "Clasificación", "id": "Clasificación"},
                     {"name": "% Confianza", "id": "% Confianza"},
+                    {"name": "Imagen", "id": "Imagen", "presentation": "markdown"},
                 ],
                 data=progress_state["results"],
                 style_table={"overflowX": "auto"},
@@ -371,11 +367,13 @@ def process_dicom_and_classify(input_path, output_path, filename, size=(224, 224
     else:
         class_name = "Desconocido"
         confidence = 0.0
-
+    # Crear URL servida por Flask
+    url = f"/external-images2/{out_file}?v={uuid4()}"
     return {
         "Archivo DICOM": filename,
         "Clasificación": class_name,
-        "% Confianza": f"{confidence:.2f}%"
+        "% Confianza": f"{confidence:.2f}%",
+        "Imagen": f"![png]({url})"
     }
 
 @app.callback(
@@ -386,9 +384,23 @@ def process_dicom_and_classify(input_path, output_path, filename, size=(224, 224
 def download_excel(n_clicks):
     if n_clicks is None:
         raise PreventUpdate
+    # ✅ Terminó el procesamiento
+    # Vaciar carpeta save_path
+    for f in os.listdir(save_path):
+        file_path = os.path.join(save_path, f)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f"Error eliminando {file_path}: {e}")
     try:
-        # Convertimos los resultados a DataFrame
-        df = pd.DataFrame(progress_state["results"])
+        # Convertimos los resultados a DataFrame y filtramos columnas relevantes
+        df = pd.DataFrame(progress_state["results"])[
+            ["Archivo DICOM", "Clasificación", "% Confianza"]
+        ]
+
 
         # Crear un archivo Excel en memoria con openpyxl
         from openpyxl import Workbook
