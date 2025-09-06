@@ -291,7 +291,7 @@ def process_saved_files(n_clicks, n_intervals):
         progress_state = {"files": files, "current": 0, "total": len(files), "results": []}
         return False, 0, "0%", "Procesando archivos DICOM...", [], {"display": "none"}
 
-    # Paso 2: Intervalo activo → simular procesamiento archivo por archivo
+    # Paso 2: Intervalo activo → procesar archivo por archivo
     if triggered_id == "progress-interval":
         if progress_state["current"] < progress_state["total"]:
             file_name = progress_state["files"][progress_state["current"]]
@@ -300,10 +300,9 @@ def process_saved_files(n_clicks, n_intervals):
             result = process_dicom_and_classify(save_path, save_path, file_name)
 
             progress_state["results"].append(result)
-
             progress_state["current"] += 1
-            percent = int(progress_state["current"] / progress_state["total"] * 100)
 
+            percent = int(progress_state["current"] / progress_state["total"] * 100)
             return (
                 False,  # seguir corriendo el Interval
                 percent,
@@ -313,21 +312,42 @@ def process_saved_files(n_clicks, n_intervals):
                 {"display": "none"}
             )
         else:
-            # Terminó el procesamiento
+            # ✅ Terminó el procesamiento → añadir fila resumen
+            from collections import Counter
+
+            clases = [r["Clasificación"] for r in progress_state["results"]]
+            conteo = Counter(clases)
+
+            if conteo:
+                clase_mayoritaria, cantidad = conteo.most_common(1)[0]
+                total = len(clases)
+                porcentaje = (cantidad / total) * 100 if total > 0 else 0
+
+                resumen = {
+                    "Archivo DICOM": "Confianza en Paciente",
+                    "Clasificación": clase_mayoritaria,
+                    "% Probabilidad": f"{porcentaje:.2f}%",
+                    "Imagen": ""
+                }
+                progress_state["results"].append(resumen)
+
+            # Construir tabla
             table = dash_table.DataTable(
                 columns=[
                     {"name": "Archivo DICOM", "id": "Archivo DICOM"},
                     {"name": "Clasificación", "id": "Clasificación"},
-                    {"name": "% Confianza", "id": "% Confianza"},
+                    {"name": "% Probabilidad", "id": "% Probabilidad"},
                     {"name": "Imagen", "id": "Imagen", "presentation": "markdown"},
                 ],
                 data=progress_state["results"],
                 style_table={"overflowX": "auto"},
                 style_cell={"textAlign": "center"},
             )
+
             return True, 100, "100%", "Procesamiento completado ✅", table, {"display": "block"}
 
     raise PreventUpdate
+
 
 # Función para convertir DICOM a PNG
 def process_dicom_and_classify(input_path, output_path, filename, size=(224, 224)):
@@ -372,7 +392,7 @@ def process_dicom_and_classify(input_path, output_path, filename, size=(224, 224
     return {
         "Archivo DICOM": filename,
         "Clasificación": class_name,
-        "% Confianza": f"{confidence:.2f}%",
+        "% Probabilidad": f"{confidence:.2f}%",
         "Imagen": f"![png]({url})"
     }
 
