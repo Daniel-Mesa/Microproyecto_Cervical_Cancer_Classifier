@@ -456,9 +456,12 @@ if __name__ == '__main__':
     global EXTERNAL_IMAGES_PATH, save_path, model
     # Cargar configuracion
     config = load_config()
-    EXTERNAL_IMAGES_PATH = config['paths']['EXTERNAL_IMAGES_PATH']
-    save_path = config['paths']['save_path']
-    model_path = config['paths']['model_path']
+    # EXTERNAL_IMAGES_PATH = config['paths']['EXTERNAL_IMAGES_PATH']
+    # save_path = config['paths']['save_path']
+    # model_path = config['paths']['model_path']
+    EXTERNAL_IMAGES_PATH = os.getenv("EXTERNAL_IMAGES_PATH", "./assets")
+    save_path = os.getenv("save_path", "./save")
+    model_path = os.getenv("model_path", "./models/best.pt")
     # Cargar modelo
     model = YOLO(model_path)
     # Ejecutar la app
