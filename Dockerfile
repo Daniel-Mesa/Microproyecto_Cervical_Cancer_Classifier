@@ -20,7 +20,7 @@ RUN mkdir -p /home/api-user/cervical_cancer_app/save
 
 # Copiar los directorios necesarios
 COPY ./assets /home/api-user/cervical_cancer_app/assets
-COPY ./data/train_models /home/api-user/cervical_cancer_app/models
+COPY ./model /home/api-user/cervical_cancer_app/models
 COPY ./scripts_app/ /home/api-user/cervical_cancer_app/
 
 # Cambiar permisos
