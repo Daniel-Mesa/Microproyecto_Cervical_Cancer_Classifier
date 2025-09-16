@@ -9,6 +9,15 @@ RUN useradd -ms /bin/bash api-user
 # Directorio de trabajo
 WORKDIR /home/api-user/cervical_cancer_app
 
+# Dependencias de sistema necesarias para OpenCV/YOLO11
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+ && rm -rf /var/lib/apt/lists/*
+
 # Copiar requirements primero (mejora cacheo)
 COPY requirements_app.txt .
 
