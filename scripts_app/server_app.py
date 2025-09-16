@@ -455,7 +455,7 @@ if __name__ == '__main__':
     # declarar como global las variables de path
     global EXTERNAL_IMAGES_PATH, save_path, model
     # Cargar configuracion
-    config = load_config()
+    # config = load_config()
     # EXTERNAL_IMAGES_PATH = config['paths']['EXTERNAL_IMAGES_PATH']
     # save_path = config['paths']['save_path']
     # model_path = config['paths']['model_path']
