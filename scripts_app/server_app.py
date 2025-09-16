@@ -68,7 +68,7 @@ login_layout = html.Div(
         dbc.Card(
             dbc.CardBody(
                 [
-                    html.Img(src='/external-images/logo.jpg', className="mb-3 d-block mx-auto", style={ "height": "80px"}),
+                    html.Img(src='/external-images/logo.JPG', className="mb-3 d-block mx-auto", style={ "height": "80px"}),
                     html.H3("Cervical Clasify APP", className="text-center"),
                     dbc.Input(id="login-username", placeholder="Usuario", type="text", className="mb-3"),
                     dbc.Input(id="login-password", placeholder="Contraseña", type="password", className="mb-3"),
@@ -92,7 +92,7 @@ app_layout = html.Div(
                     html.A(
                         dbc.Row(
                             [
-                                dbc.Col(html.Img(src='/external-images/logo.jpg', height="40px")),
+                                dbc.Col(html.Img(src='/external-images/logo.JPG', height="40px")),
                                 dbc.Col(dbc.NavbarBrand("Cervical Clasify APP", className="ms-2")),
                             ],
                             align="center",
